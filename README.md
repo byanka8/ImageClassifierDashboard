@@ -35,20 +35,39 @@ venv\Scripts\activate
 
 ```bash
 pip install -r requirements.txt
+pip install pyinstaller
 ```
-
-### 4. Run the program
+### 4. Generate the .exe files
 
 ```bash
-// Launch two cmd or terminals (server and client)
-// Make sure to activate venv on both terminals
-// Start running the server before the client
+# DASHBOARD_SERVER
+pyinstaller --onefile dashboard_server.py ^ --add-data "proto;proto"
 
-// Terminal 1: Running the Server
-cd server
-python dashboard_server.py
+# TRAINING_CLIENT
+pyinstaller --onefile training_client.py ^
+    --add-data "proto;proto" ^
+    --hidden-import numpy.core._multiarray_umath ^
+    --hidden-import numpy.core.multiarray ^
+    --hidden-import numpy.linalg.lapack_lite ^
+    --hidden-import numpy.random._common ^
+    --hidden-import numpy.random._mt19937 ^
+    --hidden-import numpy.random._pcg64 ^
+    --hidden-import numpy.random._philox ^
+    --hidden-import numpy.random._generator
+```
 
-// Terminal 2: Running the Client
-cd client
-python training_client.py
+### 5. Run the program
+Run the program through terminals or simply click the .exe files under the dist folder.
+```bash
+# Launch two cmd or terminals (server and client)
+# Make sure to activate venv on both terminals
+# Start running the server before the client
+
+# Terminal 1: Running the Server
+cd dist
+dashboard_server.exe
+
+# Terminal 2: Running the Client
+cd dist
+training_client.exe
 ```
