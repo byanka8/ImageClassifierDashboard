@@ -1,0 +1,32 @@
+//Version to use
+syntax = "proto3";
+
+//Name of the server / service
+service TrainingStream {
+  //Will create a SendBatchUpdate and SendLossUpdate call
+  //Takes in a BatchUpdate and LossUpdate message
+  //Returns an Ack to the client
+  rpc SendBatchUpdate (BatchUpdate) returns (Ack);
+  rpc SendLossUpdate (LossUpdate) returns (Ack);
+}
+
+message Ack {
+  string status = 1;  // "ok" or error message
+}
+
+message ImageData {
+  // One single image encoded
+  bytes data = 1;         // encoded image (PNG/JPEG)
+  string ground_truth = 2;	// actual label of the image
+  string prediction = 3;	// predicted label of the image
+}
+
+message BatchUpdate {
+  repeated ImageData images = 1;  // 16 tiles
+}
+
+message LossUpdate {
+  float loss = 1;	// training loss for the iteration/batch
+  int32 iteration = 2;	// iteration number
+}
+
