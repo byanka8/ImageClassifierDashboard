@@ -35,6 +35,7 @@ last_image = [None] * TOTAL  # initialize a list to track last displayed image p
 latest_batch = None   # will hold list of ImageData messages
 latest_loss = 0.0
 loss_history = []
+step_history = []
 
 # thread-safe lock for state
 state_lock = threading.Lock()
@@ -97,10 +98,6 @@ gt_widgets = []
 # build viewport and layout (keeps your original layout)
 dpg.create_viewport(title="ML Training Dashboard", width=1400, height=670)
 
-# For auto-fit
-x_axis_tag = "loss_x_axis"
-y_axis_tag = "loss_y_axis"
-
 with dpg.window(label="Live ML Training Dashboard", width=1400, height=670):
     dpg.add_text("Live ML Training Dashboard", color=(200, 200, 255))
     dpg.add_separator()
@@ -145,9 +142,11 @@ with dpg.window(label="Live ML Training Dashboard", width=1400, height=670):
         # Loss chart
         dpg.add_text("Loss Chart")
         with dpg.plot(label="Loss", height=200, width=1200):
-            dpg.add_plot_axis(dpg.mvXAxis, label="iteration", tag=x_axis_tag)
-            with dpg.plot_axis(dpg.mvYAxis, label="loss", tag=y_axis_tag):
+            dpg.add_plot_axis(dpg.mvXAxis, label="iteration", auto_fit=True)
+            with dpg.plot_axis(dpg.mvYAxis, label="loss", tag="y_axis_tag"):
                 loss_series = dpg.add_line_series([], [], label="loss")
+
+        dpg.set_axis_limits("y_axis_tag", -1, 3)
 
 # finish UI setup
 dpg.setup_dearpygui()
@@ -173,7 +172,7 @@ frame_count = 0
 fps_timer = time.perf_counter()
 
 def update_once():
-    global frame_count, last_time, fps_timer, loss_history, last_batch_update
+    global frame_count, last_time, fps_timer, loss_history, step_history, last_batch_update
 
     now = time.perf_counter()
     dt = now - last_time
@@ -183,7 +182,6 @@ def update_once():
     # read shared state
     with state_lock:
         batch_copy = list(latest_batch) if latest_batch else None
-        loss_val = latest_loss
 
     # --- update images, predictions, GT only every BATCH_UPDATE_INTERVAL seconds ---
     if batch_copy and (now - last_batch_update >= BATCH_UPDATE_INTERVAL):
@@ -197,21 +195,21 @@ def update_once():
                     logging.exception("Failed to decode image; using blank.")
                     flat = [0.0] * (IMG_SIZE * IMG_SIZE * 4)
                 dpg.set_value(texture_ids[i], flat)
-                dpg.set_value(pred_widgets[i], f"{i}: {img_data.prediction}     ")
-                dpg.set_value(gt_widgets[i], f"{i}: {img_data.ground_truth}     ")
+                dpg.set_value(pred_widgets[i], f"{i+1:<2}: {img_data.prediction:<10}")
+                dpg.set_value(gt_widgets[i], f"{i+1:<2}: {img_data.ground_truth:<10}")
                 last_image[i] = img_data
         last_batch_update = now  # reset timer
 
     # --- update loss chart every frame (can adjust if needed) ---
-    loss_history.append(loss_val)
-    if len(loss_history) > 200:
-        loss_history = loss_history[-200:]
-    x_data = list(range(len(loss_history)))
-    y_data = loss_history
-    dpg.set_value(loss_series, [x_data, y_data])
-
-    dpg.set_axis_limits_auto(x_axis_tag)
-    dpg.set_axis_limits_auto(y_axis_tag)
+    with state_lock:  # read latest_loss safely
+        current_loss = latest_loss
+        current_step = last_loss_iteration
+    if not step_history or current_step > step_history[-1]: # Only append if new iteration
+    # if current_step % 2 == 0:  # append every 2nd received loss
+        loss_history.append(current_loss)
+        step_history.append(current_step)
+        # Update plot
+        dpg.set_value(loss_series, [step_history, loss_history])
 
     # --- update FPS once per second ---
     if now - fps_timer >= 1.0:
