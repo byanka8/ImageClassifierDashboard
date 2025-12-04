@@ -18,20 +18,19 @@ import grpc
 import training_pb2
 import training_pb2_grpc
 
-# ===== CONFIG =====
+# CONFIG
 ROWS = 2
 COLS = 8
 TOTAL = ROWS * COLS
 FPS = 60
 IMG_SIZE = 96  # texture size used by the dashboard
-UPDATE_INTERVAL = 0.3
 
 UPDATE_LOSS_EVERY = 16
 last_loss_iteration = -1
 
 last_image = [None] * TOTAL  # initialize a list to track last displayed image per slot
 
-# ===== shared state updated by gRPC handlers =====
+# shared state updated by gRPC handlers 
 latest_batch = None   # will hold list of ImageData messages
 latest_loss = 0.0
 loss_history = []
@@ -40,18 +39,18 @@ step_history = []
 # thread-safe lock for state
 state_lock = threading.Lock()
 
-# ===== batch update throttling =====
+# batch update throttling 
 last_batch_update = 0.0  # global time of last visual update
 BATCH_UPDATE_INTERVAL = 2.0  # seconds between visual batch updates
 
-# ===== gRPC Servicer =====
+# gRPC Servicer
 class TrainingStreamServicer(training_pb2_grpc.TrainingStreamServicer):
     def SendBatchUpdate(self, request, context):
         """Unary RPC: client sends BatchUpdate(images=[ImageData,...])"""
         global latest_batch
         try:
             with state_lock:
-                # store the message list (make a shallow copy)
+                # store the message list
                 latest_batch = list(request.images)
             return training_pb2.Ack(status="ok")
         except Exception as e:
@@ -78,7 +77,7 @@ def serve_grpc(port=50051):
     except KeyboardInterrupt:
         server.stop(0)
 
-# ===== DearPyGUI UI setup =====
+# DearPyGUI UI setup
 dpg.create_context()
 
 # create a texture registry and dynamic textures for TOTAL tiles
@@ -95,11 +94,11 @@ image_widgets = []
 pred_widgets = []
 gt_widgets = []
 
-# build viewport and layout (keeps your original layout)
-dpg.create_viewport(title="ML Training Dashboard", width=1400, height=670)
+# build viewport and layout
+dpg.create_viewport(title="Image Classifier Dashboard", width=1400, height=670)
 
-with dpg.window(label="Live ML Training Dashboard", width=1400, height=670):
-    dpg.add_text("Live ML Training Dashboard", color=(200, 200, 255))
+with dpg.window(label="Image Classifier Dashboard", width=1400, height=670):
+    dpg.add_text("Image Classifier Dashboard", color=(200, 200, 255))
     dpg.add_separator()
 
     # Create a scrollable region
@@ -152,10 +151,10 @@ with dpg.window(label="Live ML Training Dashboard", width=1400, height=670):
 dpg.setup_dearpygui()
 dpg.show_viewport()
 
-# ===== helper functions =====
+# helper functions
 def pil_to_rgba_flat(pil_img, target_size=IMG_SIZE):
     """Convert PIL.Image -> flattened list of floats (RGBA 0..1) for dpg dynamic texture."""
-    # Resize to target_size (maintain aspect ratio by padding if needed)
+    # Resize to target_size
     if pil_img.mode != "RGBA":
         pil_img = pil_img.convert("RGBA")
     # Resize - preserve aspect ratio: fit into square and paste onto transparent background
@@ -183,7 +182,7 @@ def update_once():
     with state_lock:
         batch_copy = list(latest_batch) if latest_batch else None
 
-    # --- update images, predictions, GT only every BATCH_UPDATE_INTERVAL seconds ---
+    # update images, predictions, GT only every BATCH_UPDATE_INTERVAL seconds
     if batch_copy and (now - last_batch_update >= BATCH_UPDATE_INTERVAL):
         for i, img_data in enumerate(batch_copy[:TOTAL]):
             if img_data != last_image[i]:
@@ -200,7 +199,7 @@ def update_once():
                 last_image[i] = img_data
         last_batch_update = now  # reset timer
 
-    # --- update loss chart every frame (can adjust if needed) ---
+    # update loss chart every frame
     with state_lock:  # read latest_loss safely
         current_loss = latest_loss
         current_step = last_loss_iteration
@@ -211,18 +210,22 @@ def update_once():
         # Update plot
         dpg.set_value(loss_series, [step_history, loss_history])
 
-    # --- update FPS once per second ---
+    # update FPS once per second
     if now - fps_timer >= 1.0:
         fps = frame_count
         frame_count = 0
         fps_timer = now
         dpg.set_value("fps_text", f"FPS: {fps}")
 
-# ===== start gRPC server in background thread =====
+    # Built-in
+    # current_fps = dpg.get_frame_rate()
+    # dpg.set_value("fps_text", f"FPS: {current_fps:.1f}")
+
+# start gRPC server in background thread
 grpc_thread = threading.Thread(target=serve_grpc, kwargs={"port": 50051}, daemon=True)
 grpc_thread.start()
 
-# ===== DearPyGUI render loop =====
+# DearPyGUI render loop
 try:
     while dpg.is_dearpygui_running():
         try: # if an exception occurs, the program will terminate
@@ -230,6 +233,5 @@ try:
         except Exception:
             logging.exception("UI update failed; continuing.")
         dpg.render_dearpygui_frame()
-        # time.sleep(0.01)  # 10 ms delay (~100 FPS max)
 finally:
     dpg.destroy_context()

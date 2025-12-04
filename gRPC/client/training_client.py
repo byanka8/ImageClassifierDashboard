@@ -17,10 +17,7 @@ from tensorflow.keras import datasets, layers, models
 import matplotlib.pyplot as plt
 import numpy as np
 
-# -----------------------------
 # Fault-tolerant helpers
-# -----------------------------
-
 def safe_grpc_call(call_fn, max_retries=5, base_delay=0.2):
     """Execute a gRPC call with retry and exponential backoff.
        Returns None if permanently failed.
@@ -44,10 +41,7 @@ def wait_for_channel_ready(channel, timeout=3):
     except grpc.FutureTimeoutError:
         return False
 
-
-# -----------------------------
 # Main training client
-# -----------------------------
 if __name__ == "__main__":
 
     # Connect to dashboard server
@@ -61,9 +55,7 @@ if __name__ == "__main__":
     else:
         print("[WARN] Dashboard not available. Continuing without sending data.")
 
-    # --------------------------
     # Dataset loading
-    # --------------------------
     (X_train, y_train), (X_test, y_test) = datasets.cifar10.load_data()
 
     print("X_train shape:", X_train.shape)
@@ -77,9 +69,7 @@ if __name__ == "__main__":
     X_train = X_train / 255.0
     X_test = X_test / 255.0
 
-    # --------------------------
-    # Model
-    # --------------------------
+    # Build Model
     cnn = models.Sequential([
         tf.keras.Input(shape=(32,32,3)),
         layers.Conv2D(32, (3, 3), activation='relu'),
@@ -101,12 +91,10 @@ if __name__ == "__main__":
     train_dataset = train_dataset.shuffle(buffer_size=1024).batch(batch_size)
 
     # Rate limit send operations
-    SEND_INTERVAL = 0
+    SEND_INTERVAL = 0 # can adjust this
     last_send_ts = 0
 
-    # --------------------------
     # Training loop
-    # --------------------------
     for epoch in range(3):
         print(f"Epoch {epoch+1}")
 
@@ -157,7 +145,7 @@ if __name__ == "__main__":
                         iteration=batch_idx
                     ))
 
-                # Try sending; if dashboard died mid-training, disable future sends
+                # If dashboard closed, retry or diable future sends 
                 if safe_grpc_call(send_batch) is None:
                     dashboard_available = False
 
