@@ -2,18 +2,18 @@ import sys
 import os
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../proto")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "proto")))
 
 import grpc
 import time
-import training_pb2_grpc
-import training_pb2
+from proto import training_pb2_grpc
+from proto import training_pb2
 from PIL import Image
 import io
 import random
 
 import tensorflow as tf
-from tensorflow.keras import datasets, layers, models
+from tensorflow.keras import datasets, layers, models # type: ignore
 import matplotlib.pyplot as plt
 import numpy as np
 

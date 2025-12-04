@@ -1,7 +1,7 @@
 import sys
 import os
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../proto")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "proto")))
 
 import io
 import time
@@ -15,8 +15,8 @@ from PIL import Image
 import dearpygui.dearpygui as dpg
 
 import grpc
-import training_pb2
-import training_pb2_grpc
+from proto import training_pb2
+from proto import training_pb2_grpc
 
 # CONFIG
 ROWS = 2
